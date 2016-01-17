@@ -18,6 +18,7 @@
   "homepage": "https://github.com/FranzSkuffka/amazon-review-analyzer#readme",
   "dependencies": {
     "babel-core": "^6.4.0",
-    "coffee-script": "^1.10.0"
+    "coffee-script": "^1.10.0",
+    "mongodb": "^2.1.4"
   }
 }
