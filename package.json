@@ -19,6 +19,11 @@
   "dependencies": {
     "babel-core": "^6.4.0",
     "coffee-script": "^1.10.0",
-    "mongodb": "^2.1.4"
+    "mongodb": "^2.1.4",
+    "retext": "^1.0.0",
+    "retext-intensify": "^1.1.0",
+    "retext-profanities": "^1.0.0",
+    "retext-readability": "^1.2.0",
+    "retext-spell": "wooorm/retext-spell"
   }
 }
