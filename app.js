@@ -1,6 +1,21 @@
 import Scraper from '../amazon-review-scraper/'
 import {MongoClient} from 'mongodb'
 import assert from 'assert'
+import retext from 'retext'
+import spell from 'retext-spell'
+import profanities from 'retext-profanities'
+import intensify from 'retext-intensify'
+import readability from 'retext-readability'
+import dict from 'dictionary-en-gb'
+import report from 'vfile-reporter'
+
+var readabilityCallback  = retext().use(readability).process;
+var retextReadability = new Promise.promisify(readabilityCallback);
+// var retextSpell = new Promise.promisify(retext().use(spell, dict).process);
+// var retextProfanities = new Promise.promisify(retext().use(profanities).process);
+// var retextIntensify = new Promise.promisify(retext().use(intensify).process);
+
+
 
 var scraper = new Scraper()
 
@@ -38,7 +53,6 @@ var scrapeProducts = function (products) {
     }
 };
 
-// scrapeProducts(products);
 
 
 
@@ -48,19 +62,55 @@ var analyzeReviews = function() {
         var rawdataCollection = db.collection('reviews');
         var productCollection = db.collection('products');
         var targetCollection = db.collection('analyzedReviews');
-        rawdataCollection.find().toArray(function(err, res) {
-            for (var rawReview of res){
-                var processedReview = rawReview;
-                processedReview.votes.quota = rawReview.votes.helpful / rawReview.votes.total
-                processedReview.languageMetaData = {}
-                processedReview.languageMetaData.length = processedReview.text.length
-                delete processedReview.text;
-                console.log(processedReview);
-                // targetCollection.insert(review);
+        productCollection.find().toArray(function (err, res) {
+            products = {}
+            for (var product of res){
+                products[product._id] = product
             }
-            db.close()
+
+            rawdataCollection.find().toArray(function(err, res) {
+                for (var rawReview of res){
+                    var processedReview = rawReview;
+                    var retextResults = {};
+                    processedReview.languageMetaData = {};
+                    processedReview.product = products[processedReview.productId];
+
+                    retext().use(readability).process(processedReview.text, function (err, file) {
+                        retextResults.readability = file.messages.length;
+                    });
+                    retext().use(profanities).process(processedReview.text, function (err, file) {
+                        retextResults.profanities = file.messages.length;
+                    });
+
+                    retext().use(spell, dict).process(processedReview.text, function (err, file) {
+                        retextResults.spell = file.messages.length;
+                    });
+
+                    retext().use(intensify).process(processedReview.text, function (err, file) {
+                        retextResults.intensity = file.messages.length;
+                    });
+
+
+
+
+
+
+                    processedReview.languageMetaData.issues = retextResults;
+                    processedReview.languageMetaData.characterCount = processedReview.text.length;
+                    processedReview.languageMetaData.wordCount = processedReview.text.split(' ').length;
+                    processedReview.languageMetaData.avgWordLength = processedReview.languageMetaData.characterCount / processedReview.languageMetaData.wordCount;
+                    processedReview.languageMetaData.profanityDensity = processedReview.languageMetaData.issues.profanities / processedReview.languageMetaData.wordCount * 100;
+
+                    delete processedReview.text;
+                    processedReview.votes.quota = rawReview.votes.helpful / rawReview.votes.total
+                    targetCollection.insert(processedReview);
+                    console.log('inserted product')
+                }
+                db.close()
+            });
         });
     });
 }
 
 analyzeReviews();
+// scrapeProducts(products);
