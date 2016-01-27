@@ -9,27 +9,25 @@ import readability from 'retext-readability'
 import dict from 'dictionary-en-gb'
 import report from 'vfile-reporter'
 import analyzeStuff from './analyzeReviews.coffee'
+import fs from 'fs'
 
 
 var scraper = new Scraper()
 
 var dburl = 'mongodb://localhost:27017/reviews'
 
-var products = [
-    // 'http://www.amazon.com/Amazon-W87CUN-Fire-TV-Stick/dp/B00GDQ0RMG/ref=cm_cr_pr_product_top?ie=UTF8'
-    'http://www.amazon.com/Ozeri-Digital-Multifunction-Kitchen-Elegant/dp/B004164SRA/ref=zg_bs_kitchen_2'
-    // 'http://www.amazon.com/Blue-Microphones-Yeti-USB-Microphone/dp/B002VA464S/ref=zg_bs_musical-instruments_11'
+var departments = [
+
 ]
-var scrapeProducts = function (products) {
+var scrapeProduct = function (url) {
     var opts = {
         pageChunks: {
-            start: 10,
+            start: 5,
             middle: 0,
             end: 0
         },
         sortOrder: 'helpful'
     }
-    for (var url of products) {
         scraper.scrapeProduct(url).then(function (productData) {
             MongoClient.connect(dburl, function (err, db) {
                 assert.equal(null, err);
@@ -50,9 +48,8 @@ var scrapeProducts = function (products) {
                     collection.insert(review);
                     console.log('inserted review')
                 }
-                });
+            });
         });
-    }
 };
 
 
@@ -60,5 +57,34 @@ var scrapeProducts = function (products) {
 
 
 
-// analyzeReviews();
-// scrapeProducts(products);
+// scrapeProduct(url);
+
+var scrapeDepartment = function (url) {
+    scraper.getDepartmentProductUrls(url, 10)
+        .then((urls) =>
+            {
+                for (var productUrl of urls){
+                    scrapeProduct(productUrl)
+                }
+            })
+}
+
+// scrapeDepartment('http://www.amazon.com/Best-Sellers-Electronics-Office-Products/zgbs/electronics/172574/ref=zg_bs_nav_e_1_e');
+var exportData = function () {
+    MongoClient.connect(dburl, function (err, db) {
+        var sourceCollection = db.collection('analyzedReviews');
+        sourceCollection.find().toArray( function(err, res) {
+                console.log(res.length);
+                fs.writeFile('export.json', JSON.stringify(res), function (err) {
+                      if (err) return console.log(err);
+                      console.log('Exported analyzed reviews > export.json');
+                });
+
+            });
+    });
+};
+
+
+
+analyzeStuff();
+// exportData();
