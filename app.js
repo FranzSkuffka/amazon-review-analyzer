@@ -17,8 +17,18 @@ var scraper = new Scraper()
 var dburl = 'mongodb://localhost:27017/reviews'
 
 var departments = [
-
+    'http://www.amazon.com/Best-Sellers-Appliances/zgbs/appliances/',
+    'http://www.amazon.com/Best-Sellers-Electronics/zgbs/electronics/',
+    'http://www.amazon.com/Best-Sellers-Computers-Accessories/zgbs/pc/',
+    'http://www.amazon.com/Best-Sellers-Toys-Games/zgbs/toys-and-games/',
+    'http://www.amazon.com/Best-Sellers-Patio-Lawn-Garden/zgbs/lawn-garden/',
+    'http://www.amazon.com/Best-Sellers-Home-Improvement/zgbs/hi/',
+    'http://www.amazon.com/Best-Sellers-Office-Products/zgbs/office-products/',
+    'http://www.amazon.com/Best-Sellers-Pet-Supplies/zgbs/pet-supplies/',
+    'http://www.amazon.com/Best-Sellers-Kitchen-Dining/zgbs/kitchen/',
+    'http://www.amazon.com/Best-Sellers-Industrial-Scientific/zgbs/industrial/'
 ]
+
 var scrapeProduct = function (url) {
     var opts = {
         pageChunks: {
@@ -46,7 +56,7 @@ var scrapeProduct = function (url) {
                     review._id = review.id;
                     delete review.id;
                     collection.insert(review);
-                    console.log('inserted review')
+                    console.log('inserted review',review._id)
                 }
             });
         });
@@ -70,6 +80,11 @@ var scrapeDepartment = function (url) {
 }
 
 // scrapeDepartment('http://www.amazon.com/Best-Sellers-Electronics-Office-Products/zgbs/electronics/172574/ref=zg_bs_nav_e_1_e');
+
+for (var index in departments) {
+    setTimeout(()=>scrapeDepartment(departments[index]), 5000*index);
+}
+
 var exportData = function () {
     MongoClient.connect(dburl, function (err, db) {
         var sourceCollection = db.collection('analyzedReviews');
@@ -86,5 +101,5 @@ var exportData = function () {
 
 
 
-analyzeStuff();
+//analyzeStuff();
 // exportData();
