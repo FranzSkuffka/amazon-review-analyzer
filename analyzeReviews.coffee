@@ -19,6 +19,7 @@ class Analysis
             # insert text metadata
             @review.textMetaData = {}
             @review.textMetaData.characterCount = @review.text.length
+            @review.textMetaData.titleLength = @review.title.length
             @review.textMetaData.wordCount = @review.text.split(' ').length
             @review.textMetaData.averageWordLength = @review.textMetaData.characterCount / @review.textMetaData.wordCount
 
