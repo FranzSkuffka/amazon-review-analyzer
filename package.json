@@ -25,6 +25,7 @@
     "retext-intensify": "^1.1.0",
     "retext-profanities": "^1.0.0",
     "retext-readability": "^1.2.0",
+    "retext-sentiment": "^1.0.0",
     "retext-spell": "wooorm/retext-spell",
     "vfile-reporter": "^1.5.0"
   },

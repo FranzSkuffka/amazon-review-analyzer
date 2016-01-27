@@ -5,6 +5,7 @@ spell = require 'retext-spell'
 profanities = require 'retext-profanities'
 intensify = require 'retext-intensify'
 readability = require 'retext-readability'
+sentiment= require 'retext-sentiment'
 dict = require 'dictionary-en-gb'
 report = require 'vfile-reporter'
 
@@ -14,7 +15,7 @@ class Analysis
     constructor: (@review, @targetCollection) ->
         @run()
     run: =>
-        retext().use(readability).use(intensify).use(profanities).use(spell, dict).process @review.text, (err, file) =>
+        retext().use(readability).use(intensify).use(profanities).use(spell, dict).use(sentiment).use(=> (cst) => @review.sentiment = cst.data.polarity).process @review.text, (err, file) =>
             # insert text metadata
             @review.textMetaData = {}
             @review.textMetaData.characterCount = @review.text.length
