@@ -19,6 +19,7 @@
   "dependencies": {
     "babel-core": "^6.4.0",
     "coffee-script": "^1.10.0",
+    "crypto": "0.0.3",
     "dictionary-en-gb": "^1.0.2",
     "mongodb": "^2.1.4",
     "retext": "^1.0.0",

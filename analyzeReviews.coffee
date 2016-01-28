@@ -1,18 +1,20 @@
 MongoClient = require('mongodb').MongoClient
-assert = require 'assert'
-retext = require 'retext'
-spell = require 'retext-spell'
+assert      = require 'assert'
+retext      = require 'retext'
+spell       = require 'retext-spell'
 profanities = require 'retext-profanities'
-intensify = require 'retext-intensify'
+intensify   = require 'retext-intensify'
 readability = require 'retext-readability'
-sentiment= require 'retext-sentiment'
-dict = require 'dictionary-en-gb'
-report = require 'vfile-reporter'
+sentiment   = require 'retext-sentiment'
+dict        = require 'dictionary-en-gb'
+report      = require 'vfile-reporter'
+fs          = require 'fs'
+crypto      = require 'crypto'
 
 dburl = 'mongodb://localhost:27017/reviews'
 
 class Analysis
-    constructor: (@review, @targetCollection) ->
+    constructor: (@review, @targetCollection, @reviewNumber) ->
         @run()
     run: =>
         retext().use(readability).use(intensify).use(profanities).use(spell, dict).use(sentiment).use(=> (cst) => @review.sentiment = cst.data.polarity).process @review.text, (err, file) =>
@@ -39,11 +41,14 @@ class Analysis
             delete @review.text
             delete @review.productId
 
-            # notify user
-            console.log 'Analyzed review', @review._id
-
+            @review._id = crypto.createHash('md5').update(@review.id + @review.wordCount + @review.date.toString()).digest('hex')
+            rawId = @review.id + @review.text + @review.date.toString()
             # insert
             @targetCollection.insert @review
+
+            # notify user
+            console.log 'Analyzed review', @review.id, @reviewNumber
+
 
 
     mapIssues: (messages) =>
@@ -71,17 +76,34 @@ class Analysis
 
 
 module.exports = ->
-    MongoClient.connect dburl, (err, db) ->
-        assert.equal(null, err)
-        rawdataCollection = db.collection('reviews')
-        productCollection = db.collection('products')
-        targetCollection = db.collection('analyzedReviews')
-        productCollection.find().toArray (err, res) ->
-            products = {}
-            for product in res
-                products[product._id] = product
+    fs.readFile 'completedBatch', 'utf8', (err, batchNo) ->
+        console.log batchNo
+        MongoClient.connect dburl, (err, db) =>
+            assert.equal(null, err)
+            rawdataCollection = db.collection('reviews')
+            productCollection = db.collection('products')
+            targetCollection = db.collection('analyzedReviews')
+            productCollection.find().toArray (err, res) ->
+                products = {}
+                delayFactor = 0
+                for product in res
+                    products[product.id] = product
+                for i in [batchNo .. 1000]
+                    delayFactor++
+                    ((i, delayFactor) =>
+                        cursor = rawdataCollection.find()
+                        setTimeout( =>
+                            batchSize = 5
+                            fs.writeFile('completedBatch', i - 5) if i > 4
+                            console.log 'Analyzing batch', i, 'of', 5000/batchSize
+                            cursor.skip(batchSize * i).limit(batchSize).toArray (err, res) ->
+                                for review, reviewNumber in res
+                                    review.product = products[review.productId]
 
-            rawdataCollection.find().toArray (err, res) ->
-                for review in res
-                    review.product = products[review.productId]
-                    new Analysis review, targetCollection
+                                    ((review, i) =>
+                                        setTimeout( =>
+                                            new Analysis(review, targetCollection, i)
+                                        ,
+                                        i * 50))(review, reviewNumber)
+                        ,
+                        delayFactor * 500))(i, delayFactor)

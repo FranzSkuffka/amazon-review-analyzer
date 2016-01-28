@@ -29,6 +29,9 @@ var departments = [
     'http://www.amazon.com/Best-Sellers-Industrial-Scientific/zgbs/industrial/'
 ]
 
+MongoClient.connect(dburl, function (err, db) {
+var productCount = 1;
+var reviewCount = 1;
 var scrapeProduct = function (url) {
     var opts = {
         pageChunks: {
@@ -39,38 +42,27 @@ var scrapeProduct = function (url) {
         sortOrder: 'helpful'
     }
         scraper.scrapeProduct(url).then(function (productData) {
-            MongoClient.connect(dburl, function (err, db) {
-                assert.equal(null, err);
-                var collection = db.collection('products');
-                productData._id = productData.id;
-                delete productData.id;
-                collection.insert(productData);
-                console.log('inserted product')
-            });
+            var collection = db.collection('products');
+            collection.insert(productData);
+            console.log('inserted product no', productData.id, productCount)
+            productCount++;
         });
         scraper.scrapeProductReviews(url, opts).then(function (reviews) {
-            MongoClient.connect(dburl, function (err, db) {
-                assert.equal(null, err);
-                var collection = db.collection('reviews');
-                for (var review of reviews){
-                    review._id = review.id;
-                    delete review.id;
-                    collection.insert(review);
-                    console.log('inserted review',review._id)
-                }
-            });
+            var collection = db.collection('reviews');
+            for (var review of reviews){
+                collection.insert(review);
+                console.log('inserted review',review.id,reviewCount)
+                reviewCount++;
+            }
         });
 };
-
-
-
-
 
 
 // scrapeProduct(url);
 
 var scrapeDepartment = function (url) {
-    scraper.getDepartmentProductUrls(url, 10)
+    console.log('scraping', url);
+    scraper.getDepartmentProductUrls(url, 0)
         .then((urls) =>
             {
                 for (var productUrl of urls){
@@ -79,27 +71,25 @@ var scrapeDepartment = function (url) {
             })
 }
 
-// scrapeDepartment('http://www.amazon.com/Best-Sellers-Electronics-Office-Products/zgbs/electronics/172574/ref=zg_bs_nav_e_1_e');
-
-for (var index in departments) {
-    setTimeout(()=>scrapeDepartment(departments[index]), 5000*index);
-}
-
-var exportData = function () {
+var exportData = function (collectionId) {
     MongoClient.connect(dburl, function (err, db) {
-        var sourceCollection = db.collection('analyzedReviews');
+        var sourceCollection = db.collection(collectionId);
         sourceCollection.find().toArray( function(err, res) {
-                console.log(res.length);
-                fs.writeFile('export.json', JSON.stringify(res), function (err) {
-                      if (err) return console.log(err);
-                      console.log('Exported analyzed reviews > export.json');
-                });
-
+            console.log(res.length);
+            fs.writeFile(collectionId + '_' + (new Date()).toString() + '.json', JSON.stringify(res), function (err) {
+                  if (err) return console.log(err);
+                  console.log('Exported ' + collectionId);
             });
+        });
     });
 };
 
 
 
-//analyzeStuff();
+// console.log('analyzing');
+// analyzeStuff();
+exportData('reviews');
+exportData('analyzedReviews');
 // exportData();
+// scrapeDepartment(departments[0])
+});
