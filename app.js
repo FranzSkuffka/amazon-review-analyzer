@@ -1,4 +1,7 @@
 import Scraper from '../amazon-review-scraper/'
+import analyzeStuff from './analyzeReviews.coffee'
+import analyzeMissing from './analyzeMissingReviews.coffee'
+
 import {MongoClient} from 'mongodb'
 import assert from 'assert'
 import retext from 'retext'
@@ -8,8 +11,8 @@ import intensify from 'retext-intensify'
 import readability from 'retext-readability'
 import dict from 'dictionary-en-gb'
 import report from 'vfile-reporter'
-import analyzeStuff from './analyzeReviews.coffee'
 import fs from 'fs'
+import crypto from 'crypto'
 
 
 var scraper = new Scraper()
@@ -32,43 +35,42 @@ var departments = [
 MongoClient.connect(dburl, function (err, db) {
 var productCount = 1;
 var reviewCount = 1;
+
 var scrapeProduct = function (url) {
-    var opts = {
-        pageChunks: {
-            start: 5,
-            middle: 0,
-            end: 0
-        },
-        sortOrder: 'helpful'
-    }
-        scraper.scrapeProduct(url).then(function (productData) {
-            var collection = db.collection('products');
-            collection.insert(productData);
-            console.log('inserted product no', productData.id, productCount)
-            productCount++;
-        });
-        scraper.scrapeProductReviews(url, opts).then(function (reviews) {
-            var collection = db.collection('reviews');
-            for (var review of reviews){
-                collection.insert(review);
-                console.log('inserted review',review.id,reviewCount)
-                reviewCount++;
-            }
-        });
+    scraper.scrapeProduct(url).then(function (productData) {
+        var collection = db.collection('products');
+        collection.insert(productData);
+        productData._id =
+        console.log('inserted product no', productData.id, productCount)
+        productCount++;
+    });
+    scraper.scrapeProductReviews(url, opts).then(function (reviews) {
+        var collection = db.collection('reviews');
+        for (var review of reviews){
+            collection.insert(review);
+            console.log('inserted review',review.id,reviewCount)
+            reviewCount++;
+        }
+    });
 };
 
 
-// scrapeProduct(url);
-
-var scrapeDepartment = function (url) {
-    console.log('scraping', url);
-    scraper.getDepartmentProductUrls(url, 0)
-        .then((urls) =>
+var scrapeDepartment = function () {
+    var i = 0;
+    for (var url of departments){
+        let delayFactor = i
+        console.log('scraping', url);
+        setTimeout(
+        function() {scraper.scrapeDepartmentBestsellers(url, 0).then((data) =>
             {
-                for (var productUrl of urls){
-                    scrapeProduct(productUrl)
+                for (var productUrl of data.productUrls){
+                    console.log('scraping with a delay of', delayFactor);
+                    // scrapeProduct(productUrl)
                 }
             })
+        }}, delayFactor * 10000
+
+        i++
 }
 
 var exportData = function (collectionId) {
@@ -88,8 +90,8 @@ var exportData = function (collectionId) {
 
 // console.log('analyzing');
 // analyzeStuff();
-exportData('reviews');
-exportData('analyzedReviews');
+// analyzeMissing();
+// exportData('reviews');
+// exportData('analyzedReviews');
 // exportData();
-// scrapeDepartment(departments[0])
-});
+scrapeDepartments();
