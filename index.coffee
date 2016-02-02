@@ -1,5 +1,4 @@
 Scraper = require '../amazon-review-scraper/'
-analyzeStuff = require './analyzeReviews.coffee'
 
 MongoClient = require('mongodb').MongoClient
 assert = require 'assert'
@@ -100,5 +99,6 @@ MongoClient.connect dburl, (err, db) ->
                 console.log(res.length);
                 fs.writeFile collectionId + '_' + (new Date()).toString() + '.json', JSON.stringify(res),  (err) ->
                       console.log('Exported ' + collectionId);
-    new DepartmentIterator(departments, db, new Scraper(), opts)
-    exportData('reviews')
+    # new DepartmentIterator(departments, db, new Scraper(), opts)
+    exportData('analyzedReviews')
+    # exportData('reviews')
